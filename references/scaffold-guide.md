@@ -18,7 +18,7 @@
 
 ## 1. マニフェストと `scaffold.py`
 
-合意したツリーを JSON マニフェストに落とし、`python3 <skill-dir>/scripts/scaffold.py manifest.json [--root <dir>] [--dry-run] [--gitkeep]` で作成する。既存ファイルは上書きしない（スキップして報告する）。`.gitkeep` は既定では置かない（後から `Write` で埋めるディレクトリに残骸が残るため）。全ファイルを書き終えた後に `find . -type d -empty -not -path './.git/*' -exec touch {}/.gitkeep \;` で一括して置く。
+合意したツリーを JSON マニフェストに落とし、`python3 ${CLAUDE_SKILL_DIR}/scripts/scaffold.py manifest.json [--root <dir>] [--dry-run] [--gitkeep]` で作成する。既存ファイルは上書きしない（スキップして報告する）。`--dry-run` は何も作らず結果だけ表示する。root の外を指すパス（`../x`、絶対パス）は exit 2 で拒否される。`.gitkeep` は既定では置かない（後から `Write` で埋めるディレクトリに残骸が残るため）。全ファイルを書き終えた後に `find . -type d -empty -not -path './.git/*' -exec touch {}/.gitkeep \;` で一括して置く。
 
 ```json
 {
@@ -98,7 +98,8 @@
 - `./CLAUDE.md`（推奨。`./.claude/CLAUDE.md` でも同じ扱い。どちらか一方にする）
 - `~/.claude/CLAUDE.md` は個人設定。プロジェクト用に触らない
 - `./CLAUDE.local.md` は個人のプロジェクト固有メモ。`.gitignore` に入れる
-- `@path/to/file` で他ファイルを取り込める（要確認: 現行ドキュメントで挙動を確認して使う）
+- `@path/to/file` で他ファイルを取り込める。相対パスは CLAUDE.md からの相対、再帰は 4 段まで。取り込んだファイルは **起動時に全文読み込まれる** ので文脈は減らない（分割の目的が整理なら可、削減なら `.claude/rules/` の `paths` を使う）。バッククォートで囲んだ `@path` は取り込まれない。作業ディレクトリ外のパス（`@~/...`）は初回に承認ダイアログが出る
+- HTML コメント（`<!-- ... -->`）は Claude の文脈に入る前に除去される。`<!-- 賞味期限 -->` は人間向けのメモであり、Claude はその行を恒久ルールとして読む。だから期限が来たら人が消す
 
 ### 方針
 - **100〜200 行。** それ以上は `.claude/rules/` に分割
@@ -127,7 +128,7 @@
 - PR 前に必ず: `<チェックコマンド>`（`/pre-pr-check` skill があればそれ）
 - レビュー: <誰が／何が見直すか（人 / CI / reviewer agent）>
 - フィードバック: <どこから拾うか（Issue / Slack / ログ）、巡回の頻度>
-- 大きなファイルは 200 行ずつ分割して読む <!-- 賞味期限: YYYY-MM。モデル更新時に見直す -->
+- （例。該当する回避策がなければこの行ごと消す）大きなファイルは 200 行ずつ分割して読む <!-- 賞味期限: YYYY-MM。モデル更新時に見直す -->
 
 ## 構成
 （ツリーではなく「どこに何を置くか」の原則を 3〜6 行。ツリーは README か docs へ）
@@ -193,14 +194,18 @@ paths:
 | フィールド | 意味 |
 |---|---|
 | `name` | スキル名の上書き。省略時はディレクトリ名 |
-| `description` | **最重要。** 何をするか＋いつ使うかを具体的に。Claude はこれを見て自動発動を判断する |
-| `disable-model-invocation` | `true` でユーザーの `/name` 呼び出し限定（自動発動しない）。副作用が大きい手順（デプロイ等）に付ける |
+| `description` | **最重要。** 何をするか＋いつ使うかを具体的に。Claude はこれを見て自動発動を判断する。一覧表示では `when_to_use` と合わせて 1,536 文字で切られるので、主用途を先頭に書く |
+| `disable-model-invocation` | `true` でユーザーの `/name` 呼び出し限定（自動発動しない）。副作用が大きい手順（デプロイ等）に付ける。サブエージェントへの事前ロード（agents の `skills`）も無効になる点に注意 |
 | `user-invocable` | `false` で `/` メニューから隠す（Claude の自動発動のみ） |
 | `argument-hint` | `/name` 入力時のヒント。例 `"<migration-name>"` |
-| `allowed-tools` | 使えるツールの CSV。例 `Read, Grep, Bash` |
+| `arguments` | 位置引数に名前を付ける。`arguments: [issue, branch]` なら本文で `$issue` `$branch` が使える |
+| `allowed-tools` | 確認なしで使えるツール。空白区切り・CSV・YAML リストのいずれか。例 `Read, Grep, Bash` |
+| `disallowed-tools` | スキル実行中に使わせないツール。自律実行するスキルで `AskUserQuestion` を外す等 |
 | `model` | このスキル実行時のモデル |
+| `context` | `fork` でサブエージェントとして実行（メインの文脈を汚さない）。`agent` で使うサブエージェント種別を指定できる |
+| `paths` | glob のリスト。一致するファイルを扱っているときだけ自動発動する（rules の `paths` と同形式） |
 
-本文中で `$ARGUMENTS`（引数全体）、`$0` `$1`（位置引数）が使える。`` !`command` `` で shell の標準出力を埋め込める。
+本文中で `$ARGUMENTS`（引数全体）、`$0` `$1`（位置引数。`$ARGUMENTS[0]` と同じ）が使える。`${CLAUDE_SKILL_DIR}`（SKILL.md のあるディレクトリ）、`${CLAUDE_PROJECT_DIR}`（プロジェクトルート）も展開される。`` !`command` `` で shell の標準出力を埋め込める。
 
 **YAML の注意:** `description` に `: `（コロン＋空白）や `#` が含まれると unquoted では YAML エラーになる。description は常に二重引用符で囲む（agents、rules も同じ）。
 
@@ -247,13 +252,15 @@ allowed-tools: Read, Edit, Bash, Grep
 | `description` | ○ | いつ委譲するか。メインの Claude はこれを見て委譲を判断する |
 | `tools` | | 使えるツールの CSV（許可リスト）。例 `Read, Grep, Glob, Bash` |
 | `disallowedTools` | | 禁止リスト |
-| `model` | | `sonnet` / `opus` / `haiku` / `inherit` など |
-| `permissionMode` | | `default` / `acceptEdits` / `plan` など |
+| `model` | | `sonnet` / `opus` / `haiku` / `fable` / フルモデル ID / `inherit` |
+| `permissionMode` | | `default` / `acceptEdits` / `auto` / `dontAsk` / `bypassPermissions` / `plan` |
 | `maxTurns` | | ターン上限 |
 | `skills` | | 事前ロードするスキル名の CSV |
 | `mcpServers` | | 使わせる MCP サーバー名の CSV |
-| `memory` | | `user` / `project` / `local` — 永続メモリ（要確認: 環境による） |
-| `background` | | `true` で常駐 |
+| `memory` | | セッションをまたぐ自動メモリ。`user`（`~/.claude/agent-memory/<name>/`、全プロジェクト共通）/ `project`（`.claude/agent-memory/<name>/`、リポジトリで共有）/ `local`（`.claude/agent-memory-local/<name>/`、コミットしない） |
+| `background` | | `true` で、フォアグラウンド指定されても常にバックグラウンド実行 |
+| `isolation` | | `worktree` で一時的な git worktree 上で動かす（変更がなければ自動削除） |
+| `effort` | | `low` / `medium` / `high` / `xhigh` / `max` |
 
 本文はそのエージェントのシステムプロンプト。会話履歴は引き継がれないので、必要な文脈は本文か委譲時のプロンプトで渡す。
 
@@ -347,7 +354,21 @@ claude plugin validate ./my-plugin
 ```
 
 ### 配布
-マーケットプレイス（`.claude-plugin/marketplace.json`）経由で配布する。形式は公式ドキュメント（plugins-reference）で確認する（要確認）。生成時はスケルトンではなく「配布するなら marketplace.json が必要」と案内にとどめる。
+マーケットプレイス経由で配布する。配布用リポジトリの `.claude-plugin/marketplace.json` に次を置く（`name`・`owner.name`・`plugins[]` が必須。各エントリは `name`・`source`・`description` 必須、`version` 任意）：
+
+```json
+{
+  "name": "my-plugins",
+  "owner": { "name": "Your Name" },
+  "plugins": [
+    { "name": "my-plugin", "source": "./my-plugin", "description": "何をするか一文で", "version": "0.1.0" }
+  ]
+}
+```
+
+`source` は同一リポジトリ内の相対パスのほか、`{ "source": "github", "repo": "owner/repo" }` や `{ "source": "url", "url": "https://.../plugin.git" }` も使える。利用側は `claude plugin marketplace add <owner/repo | path | url>` のあと `claude plugin install <plugin>@<marketplace>`。配布前に `claude plugin validate .`。
+
+生成時は、ユーザーが「配布する」と言ったときだけ marketplace.json を作る。単に「他プロジェクトでも使う」なら `--plugin-dir` で足りる。
 
 ---
 
@@ -388,7 +409,7 @@ claude plugin validate ./my-plugin
 上の `url` / パッケージ名は **例**。生成時は必ずそのサーバーの公式ドキュメントの値に置き換えるか、ユーザーに確認する。
 
 ### 有効化
-プロジェクトの `.mcp.json` は初回にユーザー承認を求められる。チームで自動承認したい場合は `.claude/settings.json` の `enableAllProjectMcpServers: true` または `enabledMcpjsonServers: ["name"]`（要確認）。
+プロジェクトの `.mcp.json` は初回にユーザー承認を求められる（`claude mcp reset-project-choices` でリセット）。チームで自動承認したい場合は `.claude/settings.json` に `"enableAllProjectMcpServers": true`（全部）か `"enabledMcpjsonServers": ["name"]`（個別）を書く。`"disabledMcpjsonServers": ["name"]` はどの設定層にあっても拒否が優先される。`.mcp.json` を手で書く代わりに `claude mcp add --transport <stdio|http|sse> --scope project <name> ...` でも追加できる（stdio はコマンドの前に `--` を置く）。
 
 ---
 
@@ -435,7 +456,7 @@ claude plugin validate ./my-plugin
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true" }
+          { "type": "command", "command": "jq -r '.tool_input.file_path // empty' | xargs -r npx prettier --write 2>/dev/null || true", "timeout": 60 }
         ]
       }
     ]
@@ -443,7 +464,7 @@ claude plugin validate ./my-plugin
 }
 ```
 
-主なイベント: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PermissionRequest`, `Notification`, `Stop`, `SubagentStop`。hook は stdin で JSON を受け取る。環境変数名や JSON スキーマの詳細は公式 hooks ドキュメントで確認する（上の `$CLAUDE_FILE_PATH` は要確認 — 確実なのは stdin JSON の `tool_input.file_path` を読む方法）。
+主なイベント: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`, `Notification`, `SubagentStart`, `SubagentStop`, `Stop`, `PreCompact`, `SessionEnd`。`matcher` はツール名の完全一致で、`Edit|Write` のように `|` で複数指定できる。hook は **stdin の JSON** で `session_id` / `cwd` / `hook_event_name` / `tool_name` / `tool_input` を受け取る。編集対象のパスは `tool_input.file_path` から取る。**`$CLAUDE_FILE_PATH` という環境変数は存在しない**（公式に環境変数として渡されるのは `CLAUDE_PROJECT_DIR` / `CLAUDE_PLUGIN_ROOT` / `CLAUDE_PLUGIN_DATA` / `CLAUDE_EFFORT` のみ）。`timeout` は秒、`once: true` で 1 セッション 1 回。
 
 hooks は挙動を暗黙に変えるので、生成したら CLAUDE.md の「コマンド」節に「編集後は自動フォーマットされる」と一言書く。
 
