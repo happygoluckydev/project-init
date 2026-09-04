@@ -7,14 +7,14 @@
   },
   "metadata": {
     "description": "happygoluckydev の Claude Code プラグイン置き場",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "project-init",
       "source": "./",
       "description": "プロジェクト立ち上げの対話型スキャフォールダー（/project-init）",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "category": "productivity",
       "keywords": ["project-init", "scaffold", "bootstrap", "CLAUDE.md"]
     }
