@@ -10,8 +10,10 @@ Claude Code 用スキル **`/project-init`** の配布リポジトリ。
 project-init/
 ├── SKILL.md                    スキル本体（Claude が読む手順）
 ├── references/                 質問リスト、レビュー観点、生成ガイド
-├── scripts/scaffold.py         フォルダ雛形を作る補助スクリプト
-├── assets/                     scaffold.py 用のマニフェスト例
+├── scripts/
+│   ├── scaffold.py             JSON マニフェストからツリーを作る（上書きしない）
+│   └── validate.py             生成後の検証（frontmatter / JSON / CLAUDE.md 行数）
+├── tests/test_scaffold.py      scripts/ のテスト（配布物には含めない）
 ├── .claude-plugin/
 │   ├── plugin.json             プラグイン定義（skills: ["./"] でルートをスキルとして読む）
 │   └── marketplace.json        このリポジトリ自身を配るマーケットプレイス定義
@@ -105,8 +107,9 @@ python3 tools/package.py     # dist/project-init.skill と dist/project-init-plu
 
 ## 開発
 
-- スキル本体は `SKILL.md` と `references/`。`scripts/` と `assets/` はスキルの一部として配布される。`tools/` と `.github/` は配布に含まれない。
+- スキル本体は `SKILL.md`（150 行以内）と `references/`。`scripts/` はスキルの一部として配布される。`tools/`、`tests/`、`docs/`、`.claude/`、`.github/` は配布に含まれない。
 - 変更を試す: `claude --plugin-dir .` で起動して `/project-init` を打つ。
+- テスト: `python3 -m unittest discover -s tests`
 - PR 前: `/pre-pr-check`（検証コマンド 3 本、手動確認シナリオ、PR 本文用の自己レビュー文）。
 - Claude Code の更新への追随: `/update-watch`（CHANGELOG・docs・モデル一覧を `docs/update-watch/` のベースラインと比べ、影響箇所と修正案を Issue にする）。セッション開始時の hook が版の差を知らせ、週次の Routine でも実行する。取り込んだら `python3 .claude/skills/update-watch/scripts/fetch.py --baseline` でベースラインを更新する。
 

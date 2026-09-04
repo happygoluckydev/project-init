@@ -9,7 +9,7 @@ Usage:
 出力:
     dist/project-init.skill        claude.ai / Claude デスクトップアプリに
                                    アップロードする形式。zip の中身は
-                                   project-init/SKILL.md, references/, scripts/, assets/
+                                   project-init/SKILL.md, references/, scripts/
     dist/project-init-plugin.zip   `claude --plugin-dir` / `--plugin-url` に渡す形式。
                                    上記に .claude-plugin/plugin.json を加えたもの
 
@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SKILL_NAME = "project-init"
 # スキル本体として配布するもの。README や CI 設定は含めない。
-PAYLOAD = ["SKILL.md", "references", "scripts", "assets"]
+PAYLOAD = ["SKILL.md", "references", "scripts"]
 EXCLUDE_DIRS = {"__pycache__", "node_modules", ".git"}
 EXCLUDE_FILES = {".DS_Store", "Thumbs.db"}
 EXCLUDE_SUFFIXES = {".pyc"}
@@ -145,13 +145,16 @@ def main() -> int:
         out = ROOT / out
     out.mkdir(parents=True, exist_ok=True)
 
+    def show(path: Path) -> str:
+        return str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+
     skill = out / f"{SKILL_NAME}.skill"
     n = write_zip(skill, [])
-    print(f"書き出し: {skill.relative_to(ROOT)} ({n} files)")
+    print(f"書き出し: {show(skill)} ({n} files)")
 
     plugin_zip = out / f"{SKILL_NAME}-plugin.zip"
     n = write_zip(plugin_zip, [ROOT / ".claude-plugin" / "plugin.json"])
-    print(f"書き出し: {plugin_zip.relative_to(ROOT)} ({n} files)")
+    print(f"書き出し: {show(plugin_zip)} ({n} files)")
     return 0
 
 
