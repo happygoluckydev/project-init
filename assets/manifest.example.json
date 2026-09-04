@@ -1,0 +1,23 @@
+{
+  "dirs": [
+    "src",
+    "tests",
+    "docs",
+    "docs/adr",
+    "scripts",
+    ".claude/skills",
+    ".claude/agents",
+    ".claude/rules"
+  ],
+  "files": {
+    "README.md": "# project-name\n\nSee docs/requirements.md.\n",
+    ".env.example": "# Fill in and copy to .env\n",
+    ".claude/settings.json": {
+      "permissions": {
+        "allow": ["Bash(git status)", "Bash(git diff:*)"],
+        "ask": ["Bash(git push:*)"],
+        "deny": ["Bash(rm -rf:*)", "Read(./.env)", "Read(./.env.*)"]
+      }
+    }
+  }
+}
