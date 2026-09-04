@@ -346,8 +346,25 @@ claude --plugin-dir ./my-plugin
 claude plugin validate ./my-plugin
 ```
 
-### 配布
-マーケットプレイス（`.claude-plugin/marketplace.json`）経由で配布する。形式は公式ドキュメント（plugins-reference）で確認する（要確認）。生成時はスケルトンではなく「配布するなら marketplace.json が必要」と案内にとどめる。
+### 配布（マーケットプレイス）
+マーケットプレイス（`.claude-plugin/marketplace.json`）経由で配布する。プラグインと同じリポジトリに置き、`source: "./"` で自分自身を指せる（`claude plugin marketplace add <owner>/<repo>` → `claude plugin install <plugin>@<marketplace>` で導入できることを実機で確認済み。2026-09）。
+
+```json
+{
+  "name": "<marketplace-name>",
+  "owner": { "name": "<owner>" },
+  "plugins": [
+    { "name": "<plugin-name>", "source": "./", "description": "一文で", "version": "0.1.0" }
+  ]
+}
+```
+
+- `plugins[].source` は `./` で始まる相対パス（マーケットプレイスのルート基準）か、`{"source": "github", "repo": "owner/repo"}` のようなオブジェクト
+- `plugins[].version` は `plugin.json` の `version` と一致させる（`claude plugin tag` が不一致を検出する）
+- 検証: `claude plugin validate --strict .claude-plugin/marketplace.json`
+- 利用側のリポジトリで自動有効化するなら `.claude/settings.json` に `extraKnownMarketplaces`（`{"<name>": {"source": {"source": "github", "repo": "owner/repo"}}}`）と `enabledPlugins`（`{"<plugin>@<marketplace>": true}`）を書く
+
+単一スキルだけのプラグインなら、ルートに `SKILL.md` を置き `plugin.json` に `"skills": ["./"]` と書く形も使える（`claude plugin init <name>` が生成する形。`~/.claude/skills/<name>/` に置くと `<name>@skills-dir` として自動で読み込まれる）。
 
 ---
 

@@ -1,0 +1,11 @@
+# ビルド成果物（tools/package.py の出力）
+dist/
+# Python
+__pycache__/
+*.pyc
+# OS
+.DS_Store
+Thumbs.db
+# Claude Code 個人設定
+.claude/settings.local.json
+CLAUDE.local.md

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "project-init",
+  "version": "1.0.0",
+  "description": "プロジェクト立ち上げの対話型スキャフォールダー。要件・フォルダ構成・CLAUDE.md を段階的にインタビューし、クリティカル／ラテラルの両輪でレビューしてから、要件定義書・CLAUDE.md・skills・agents・plugin・.mcp.json を一括生成する。",
+  "author": {
+    "name": "happygoluckydev",
+    "url": "https://github.com/happygoluckydev"
+  },
+  "homepage": "https://github.com/happygoluckydev/project-init",
+  "repository": "https://github.com/happygoluckydev/project-init",
+  "keywords": ["project-init", "scaffold", "bootstrap", "CLAUDE.md", "requirements"],
+  "skills": ["./"]
+}

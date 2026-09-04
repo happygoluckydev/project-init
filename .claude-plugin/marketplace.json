@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "happygoluckydev",
+  "owner": {
+    "name": "happygoluckydev",
+    "url": "https://github.com/happygoluckydev"
+  },
+  "metadata": {
+    "description": "happygoluckydev の Claude Code プラグイン置き場",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "project-init",
+      "source": "./",
+      "description": "プロジェクト立ち上げの対話型スキャフォールダー（/project-init）",
+      "version": "1.0.0",
+      "category": "productivity",
+      "keywords": ["project-init", "scaffold", "bootstrap", "CLAUDE.md"]
+    }
+  ]
+}
