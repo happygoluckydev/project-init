@@ -18,7 +18,7 @@
 
 ## 1. マニフェストと `scaffold.py`
 
-合意したツリーを JSON マニフェストに落とし、`python3 <skill-dir>/scripts/scaffold.py manifest.json [--root <dir>] [--dry-run] [--gitkeep]` で作成する。既存ファイルは上書きしない（スキップして報告する）。`.gitkeep` は既定では置かない（後から `Write` で埋めるディレクトリに残骸が残るため）。全ファイルを書き終えた後に `find . -type d -empty -not -path './.git/*' -exec touch {}/.gitkeep \;` で一括して置く。
+合意したツリーを JSON マニフェストに落とし、`python3 ${CLAUDE_SKILL_DIR}/scripts/scaffold.py manifest.json [--root <dir>] [--dry-run] [--gitkeep]` で作成する。既存ファイルは上書きしない（スキップして報告する）。`--dry-run` は何も作らず結果だけ表示する。root の外を指すパス（`../x`、絶対パス）は exit 2 で拒否される。`.gitkeep` は既定では置かない（後から `Write` で埋めるディレクトリに残骸が残るため）。全ファイルを書き終えた後に `find . -type d -empty -not -path './.git/*' -exec touch {}/.gitkeep \;` で一括して置く。
 
 ```json
 {
@@ -127,7 +127,7 @@
 - PR 前に必ず: `<チェックコマンド>`（`/pre-pr-check` skill があればそれ）
 - レビュー: <誰が／何が見直すか（人 / CI / reviewer agent）>
 - フィードバック: <どこから拾うか（Issue / Slack / ログ）、巡回の頻度>
-- 大きなファイルは 200 行ずつ分割して読む <!-- 賞味期限: YYYY-MM。モデル更新時に見直す -->
+- （例。該当する回避策がなければこの行ごと消す）大きなファイルは 200 行ずつ分割して読む <!-- 賞味期限: YYYY-MM。モデル更新時に見直す -->
 
 ## 構成
 （ツリーではなく「どこに何を置くか」の原則を 3〜6 行。ツリーは README か docs へ）
@@ -193,14 +193,18 @@ paths:
 | フィールド | 意味 |
 |---|---|
 | `name` | スキル名の上書き。省略時はディレクトリ名 |
-| `description` | **最重要。** 何をするか＋いつ使うかを具体的に。Claude はこれを見て自動発動を判断する |
-| `disable-model-invocation` | `true` でユーザーの `/name` 呼び出し限定（自動発動しない）。副作用が大きい手順（デプロイ等）に付ける |
+| `description` | **最重要。** 何をするか＋いつ使うかを具体的に。Claude はこれを見て自動発動を判断する。一覧表示では `when_to_use` と合わせて 1,536 文字で切られるので、主用途を先頭に書く |
+| `disable-model-invocation` | `true` でユーザーの `/name` 呼び出し限定（自動発動しない）。副作用が大きい手順（デプロイ等）に付ける。サブエージェントへの事前ロード（agents の `skills`）も無効になる点に注意 |
 | `user-invocable` | `false` で `/` メニューから隠す（Claude の自動発動のみ） |
 | `argument-hint` | `/name` 入力時のヒント。例 `"<migration-name>"` |
-| `allowed-tools` | 使えるツールの CSV。例 `Read, Grep, Bash` |
+| `arguments` | 位置引数に名前を付ける。`arguments: [issue, branch]` なら本文で `$issue` `$branch` が使える |
+| `allowed-tools` | 確認なしで使えるツール。空白区切り・CSV・YAML リストのいずれか。例 `Read, Grep, Bash` |
+| `disallowed-tools` | スキル実行中に使わせないツール。自律実行するスキルで `AskUserQuestion` を外す等 |
 | `model` | このスキル実行時のモデル |
+| `context` | `fork` でサブエージェントとして実行（メインの文脈を汚さない）。`agent` で使うサブエージェント種別を指定できる |
+| `paths` | glob のリスト。一致するファイルを扱っているときだけ自動発動する（rules の `paths` と同形式） |
 
-本文中で `$ARGUMENTS`（引数全体）、`$0` `$1`（位置引数）が使える。`` !`command` `` で shell の標準出力を埋め込める。
+本文中で `$ARGUMENTS`（引数全体）、`$0` `$1`（位置引数。`$ARGUMENTS[0]` と同じ）が使える。`${CLAUDE_SKILL_DIR}`（SKILL.md のあるディレクトリ）、`${CLAUDE_PROJECT_DIR}`（プロジェクトルート）も展開される。`` !`command` `` で shell の標準出力を埋め込める。
 
 **YAML の注意:** `description` に `: `（コロン＋空白）や `#` が含まれると unquoted では YAML エラーになる。description は常に二重引用符で囲む（agents、rules も同じ）。
 

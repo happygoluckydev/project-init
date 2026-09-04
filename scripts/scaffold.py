@@ -7,16 +7,20 @@ Usage:
 Manifest format:
     {
       "dirs":  ["src", "tests", ".claude/skills"],
-      "files": {"README.md": "# name\n", "docs/.gitkeep": ""}
+      "files": {"README.md": "# name\n", ".claude/settings.json": {"permissions": {}}}
     }
+    A file value that is not a string is written as pretty-printed JSON.
 
 Behaviour:
     - Directories are created recursively (mkdir -p).
     - Files are written only if they do not exist; existing files are reported as SKIP.
     - With --gitkeep, directories listed in "dirs" that are still empty get a .gitkeep.
       Off by default: dirs you will fill later with other tools would otherwise keep a stray .gitkeep.
-    - Paths that escape --root (e.g. "../x" or absolute paths) are rejected.
+    - --dry-run touches nothing (not even --root) and only reports what would happen.
+    - Paths that escape --root (e.g. "../x" or absolute paths) are rejected with exit code 2.
     - Prints a tree of everything under --root at the end (ignoring node_modules/.git/venvs).
+
+Exit codes: 0 ok, 2 bad manifest or unsafe path.
 """
 import argparse
 import json
@@ -28,13 +32,17 @@ IGNORE = {"node_modules", ".git", ".venv", "venv", "__pycache__", "dist", "build
 
 
 def safe_join(root: Path, rel: str) -> Path:
-    p = (root / rel).resolve()
-    if root.resolve() not in p.parents and p != root.resolve():
+    """Resolve rel under root, refusing anything that escapes root."""
+    root_r = root.resolve()
+    p = (root_r / rel).resolve()
+    if p != root_r and root_r not in p.parents:
         raise ValueError(f"path escapes root: {rel}")
     return p
 
 
-def tree(root: Path, prefix: str = "") -> list[str]:
+def tree(root: Path, prefix: str = "") -> list:
+    if not root.is_dir():
+        return []
     entries = sorted(
         [e for e in root.iterdir() if e.name not in IGNORE],
         key=lambda e: (not e.is_dir(), e.name.lower()),
@@ -48,48 +56,65 @@ def tree(root: Path, prefix: str = "") -> list[str]:
     return lines
 
 
+def load_manifest(path: str):
+    with open(path, encoding="utf-8") as f:
+        manifest = json.load(f)
+    dirs = manifest.get("dirs", [])
+    files = manifest.get("files", {})
+    if not isinstance(dirs, list) or not isinstance(files, dict):
+        raise ValueError("manifest must have 'dirs' (list) and/or 'files' (object)")
+    return dirs, files
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("manifest")
     ap.add_argument("--root", default=".", help="project root (default: cwd)")
-    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--dry-run", action="store_true", help="report only; create nothing")
     ap.add_argument("--gitkeep", action="store_true", help="add .gitkeep to listed dirs that remain empty")
     args = ap.parse_args()
 
     root = Path(args.root)
-    root.mkdir(parents=True, exist_ok=True)
-    with open(args.manifest, encoding="utf-8") as f:
-        manifest = json.load(f)
-
-    dirs = manifest.get("dirs", [])
-    files = manifest.get("files", {})
-    if not isinstance(dirs, list) or not isinstance(files, dict):
-        print("manifest must have 'dirs' (list) and/or 'files' (object)", file=sys.stderr)
+    try:
+        dirs, files = load_manifest(args.manifest)
+        # Validate every path before touching the filesystem, so a bad entry aborts cleanly.
+        dir_paths = [(d, safe_join(root, d)) for d in dirs]
+        file_paths = [(rel, safe_join(root, rel)) for rel in files]
+    except (OSError, ValueError, json.JSONDecodeError) as e:
+        print(f"scaffold: {e}", file=sys.stderr)
         return 2
+
+    if not args.dry_run:
+        root.mkdir(parents=True, exist_ok=True)
 
     created_dirs, created_files, skipped = [], [], []
 
-    for d in dirs:
-        p = safe_join(root, d)
+    for d, p in dir_paths:
         if not p.exists():
             created_dirs.append(d)
             if not args.dry_run:
                 p.mkdir(parents=True, exist_ok=True)
 
-    for rel, content in files.items():
-        p = safe_join(root, rel)
+    for rel, p in file_paths:
         if p.exists():
             skipped.append(rel)
             continue
         created_files.append(rel)
         if not args.dry_run:
+            content = files[rel]
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(content if isinstance(content, str) else json.dumps(content, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            p.write_text(
+                content if isinstance(content, str) else json.dumps(content, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
 
-    if args.gitkeep and not args.dry_run:
-        for d in dirs:
-            p = safe_join(root, d)
-            if p.is_dir() and not any(p.iterdir()):
+    if args.gitkeep:
+        for d, p in dir_paths:
+            if args.dry_run:
+                # Would be empty if it doesn't exist yet or currently has no entries.
+                if not p.exists() or (p.is_dir() and not any(p.iterdir())):
+                    created_files.append(os.path.join(d, ".gitkeep"))
+            elif p.is_dir() and not any(p.iterdir()):
                 (p / ".gitkeep").write_text("", encoding="utf-8")
                 created_files.append(os.path.join(d, ".gitkeep"))
 
@@ -101,8 +126,9 @@ def main() -> int:
     for s in skipped:
         print(f"{tag}SKIP  {s} (exists, not overwritten)")
 
-    print(f"\n{root.resolve().name}/")
-    print("\n".join(tree(root)))
+    if root.is_dir():
+        print(f"\n{root.resolve().name}/")
+        print("\n".join(tree(root)))
     print(f"\n{len(created_dirs)} dirs, {len(created_files)} files created, {len(skipped)} skipped")
     return 0
 
