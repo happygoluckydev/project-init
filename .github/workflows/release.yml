@@ -1,0 +1,36 @@
+name: Release
+
+# `claude plugin tag --push` が作る project-init--v1.2.3 形式のタグ、
+# または v1.2.3 形式のタグを push すると、アーカイブを添付した GitHub Release を作る。
+on:
+  push:
+    tags:
+      - "project-init--v*"
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: タグと plugin.json の version が一致することを確認
+        run: |
+          TAG="${GITHUB_REF_NAME#project-init--}"
+          TAG="${TAG#v}"
+          VERSION="$(python3 -c 'import json;print(json.load(open(".claude-plugin/plugin.json"))["version"])')"
+          echo "tag=$TAG plugin.json=$VERSION"
+          test "$TAG" = "$VERSION"
+      - name: アーカイブを作成
+        run: python3 tools/package.py --out dist
+      - name: GitHub Release を作成して添付
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/project-init.skill dist/project-init-plugin.zip \
+            --title "project-init $GITHUB_REF_NAME" --generate-notes
