@@ -1,6 +1,6 @@
 # project-init リポジトリ 要件定義書（構成見直し）
 
-- 版: 0.1（初版）
+- 版: 0.2（別ブランチ `claude/project-init-folder-structure-c0qyy5` の統合を反映）
 - 日付: 2026-09-04
 - 作成: `/project-init` による対話とレビューから作成
 
@@ -82,6 +82,8 @@
 | evals を CI で自動実行 | 費用と保守が先行する。まず手順の固定で足りる | 手動確認で見逃しが 2 回以上起きたとき |
 | `install.sh` を残す | README の `git clone` 1 行と同じ | なし |
 | 修正案を PR として自動作成 | 自動実行が push を伴う。push は確認する方針と矛盾 | 監視のノイズが十分低いと分かったとき |
+| `assets/manifest.example.json` を残す | SKILL.md から参照されず、scaffold-guide §1 の例と重複（別ブランチのレビューで指摘） | マニフェストの例が 2 つ以上要るとき |
+| 独自のスモークテスト `tools/smoke_scaffold.py` | 別ブランチの `tests/test_scaffold.py`（unittest、validate.py も対象）に統合 | なし |
 
 ## 10. 未決事項
 

@@ -3,7 +3,8 @@
   "permissions": {
     "allow": [
       "Bash(python3 tools/package.py:*)",
-      "Bash(python3 tools/smoke_scaffold.py:*)",
+      "Bash(python3 -m unittest:*)",
+      "Bash(python3 scripts/validate.py:*)",
       "Bash(python3 .claude/skills/update-watch/scripts/fetch.py:*)",
       "Bash(claude plugin validate:*)",
       "Bash(git status:*)",

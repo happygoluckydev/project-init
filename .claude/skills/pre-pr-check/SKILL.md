@@ -17,7 +17,7 @@ claude plugin validate --strict .claude-plugin/plugin.json
 claude plugin validate --strict .claude-plugin/marketplace.json
 ```
 
-`scripts/scaffold.py` に触れた変更なら、加えて `python3 tools/smoke_scaffold.py`。
+`scripts/` に触れた変更なら、加えて `python3 -m unittest discover -s tests`。
 
 失敗したら原因と修正案を示して止まる。
 
@@ -25,10 +25,10 @@ claude plugin validate --strict .claude-plugin/marketplace.json
 
 ```bash
 git diff --stat <base>...HEAD
-git diff <base>...HEAD -- SKILL.md references/ scripts/ assets/ .claude-plugin/
+git diff <base>...HEAD -- SKILL.md references/ scripts/ .claude-plugin/
 ```
 
-変更が配布物（`SKILL.md`、`references/`、`scripts/`、`assets/`、`.claude-plugin/`）に及ぶかを判定する。配布物に触れていなければ、§3 のシナリオは「不要」と明記して §4 へ進む。
+変更が配布物（`SKILL.md`、`references/`、`scripts/`、`.claude-plugin/`）に及ぶかを判定する。配布物に触れていなければ、§3 のシナリオは「不要」と明記して §4 へ進む。
 
 ## 3. 手動確認シナリオ（配布物に触れたとき）
 

@@ -15,8 +15,8 @@ jobs:
           python-version: "3.12"
       - name: frontmatter / version の整合を検証
         run: python3 tools/package.py --check
-      - name: scripts/scaffold.py のスモークテスト
-        run: python3 tools/smoke_scaffold.py
+      - name: scripts/ のテスト
+        run: python3 -m unittest discover -s tests -v
       - name: アーカイブが作れることを確認
         run: python3 tools/package.py --out dist && ls -la dist
       - uses: actions/setup-node@v4

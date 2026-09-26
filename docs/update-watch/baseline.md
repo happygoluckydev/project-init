@@ -29,14 +29,14 @@ URL が 404 になったら https://code.claude.com/llms.txt（Claude Code）と
 
 ## 要確認リスト
 
-`references/scaffold-guide.md` で「要確認」と付けた仕様。`/update-watch` はこの表を最新 docs で点検し、確定できたものは scaffold-guide を書き換えて「確定」に移す。
+`references/scaffold-guide.md` に書いた仕様のうち、変わりやすいもの。`/update-watch` はこの表を最新 docs で点検する。「要確認」があれば確定できた時点で scaffold-guide を書き換えて「確定」に移す。新たに「要確認」を付けた項目はここにも追加する。
 
 | # | 項目 | 該当箇所 | 出典 | 状態 |
 |---|---|---|---|---|
-| 1 | CLAUDE.md の `@path/to/file` 取り込みの挙動 | scaffold-guide §3 配置 | memory | 要確認 |
+| 1 | CLAUDE.md の `@path/to/file` 取り込みの挙動 | scaffold-guide §3 配置 | memory | 確定（2026-09-04、docs: 相対パス・4 段・起動時に全文読込。HTML コメントは除去される） |
 | 2 | `.claude-plugin/marketplace.json` の形式と `source: "./"` | scaffold-guide §6 配布 | plugin-marketplaces | **確定（2026-09-04、実機で add→install を確認）** |
-| 3 | `.mcp.json` の自動承認キー `enableAllProjectMcpServers` / `enabledMcpjsonServers` | scaffold-guide §7 有効化 | settings, mcp | 要確認 |
-| 4 | hooks の `$CLAUDE_FILE_PATH` 環境変数（stdin JSON の `tool_input.file_path` が確実） | scaffold-guide §8 hooks | hooks | 要確認 |
-| 5 | agent frontmatter の `memory` フィールド | scaffold-guide §5 frontmatter | sub-agents | 要確認 |
+| 3 | `.mcp.json` の自動承認キー `enableAllProjectMcpServers` / `enabledMcpjsonServers` / `disabledMcpjsonServers` | scaffold-guide §7 有効化 | settings, mcp | 確定（2026-09-04、docs） |
+| 4 | hooks の環境変数（`$CLAUDE_FILE_PATH` は存在しない。stdin JSON の `tool_input.file_path` を使う） | scaffold-guide §8 hooks | hooks | 確定（2026-09-04、docs） |
+| 5 | agent frontmatter の `memory` / `isolation` / `effort` フィールド | scaffold-guide §5 frontmatter | sub-agents | 確定（2026-09-04、docs） |
 | 6 | SessionStart hook の stdout が文脈に入ること | このリポジトリの hook | hooks | 確定（2026-09-04、docs で確認） |
 | 7 | plugin.json の `skills: ["./"]`（ルートを単一スキルにする） | .claude-plugin/plugin.json | plugins | 確定（2026-09-04、`claude plugin init` の雛形と一致） |

@@ -23,6 +23,7 @@ description: "プロジェクト立ち上げの対話型スキャフォールダ
 2. **`$ARGUMENTS`（`/project-init <プロジェクト名や一言説明>`）があれば初期仮説にする。** 「/project-init 家計簿アプリ」なら、家計簿アプリを前提に①の質問を具体化する。
 3. **言語はユーザーに合わせる。** 質問・レビュー・生成物のコメントはユーザーが使っている言語で書く。ファイル名・識別子は英語。
 4. **AskUserQuestion ツールがあれば使う。** なければプレーンテキストで質問する。どちらの場合も 1 ラウンドあたり 3〜4 問まで。選択肢を提示できる質問は選択肢にし、自由回答が必要なものだけ自由回答にする。回答が薄いときは「例えば〜ですか？」と具体例で掘る。
+5. **規模に合わせて圧縮する。** 個人用ツールや小規模プロジェクト（利用者が本人だけ、外部連携なし、期限が数週間以内）なら、①〜③を各 1 ラウンドに圧縮してよい。その場合も③の 3 ループ（検証・レビュー・フィードバック）と、④のレビューは省かない。
 
 ### 既存プロジェクトの場合
 
@@ -95,7 +96,7 @@ description: "プロジェクト立ち上げの対話型スキャフォールダ
 
 生成順：
 
-1. **フォルダ構成** — 合意したツリーを作る。`scripts/scaffold.py` に JSON マニフェストを渡せば一括作成してツリーを表示できる（`python3 <skill-dir>/scripts/scaffold.py manifest.json`）。既存ファイルは上書きしない。`.gitkeep` は既定では置かれないので、全ファイルを書き終えた最後に空ディレクトリへまとめて置く（`find . -type d -empty -not -path './.git/*' -exec touch {}/.gitkeep \;`）。
+1. **フォルダ構成** — 合意したツリーを作る。`scripts/scaffold.py` に JSON マニフェストを渡せば一括作成してツリーを表示できる（`python3 ${CLAUDE_SKILL_DIR}/scripts/scaffold.py manifest.json`。`--dry-run` で確認してから実行できる）。既存ファイルは上書きしない。`.gitkeep` は既定では置かれないので、全ファイルを書き終えた最後に空ディレクトリへまとめて置く（`find . -type d -empty -not -path './.git/*' -exec touch {}/.gitkeep \;`）。
 2. **要件定義書** `docs/requirements.md` — ④で確定した内容。「検討したが採用しなかった選択肢」「未決事項」の節を必ず含める。
 3. **CLAUDE.md** — ③と④の結果。**100〜200 行以内**。長くなるなら `.claude/rules/<topic>.md` にパス限定（`paths:` frontmatter）で分割する。要件定義書は `@docs/requirements.md` で参照するのではなく、要点だけ転記する（要件定義書は長く、毎セッション全文読ませる価値はない）。③で聞いた 3 ループは「完了の定義（検証）」節に落とす。**今のモデルやツールの限界に合わせた一時的な対処**（「大きなファイルは分割して読ませる」「〜は苦手なので毎回確認する」等）を書くときは、その行に `<!-- 賞味期限: YYYY-MM -->` を付ける。モデルやツールが更新されれば不要になる指示を、恒久ルールと混ぜない。
 4. **skills** `.claude/skills/<name>/SKILL.md` — この要件で **繰り返し発生する定型作業** にだけ切る。例：DB マイグレーション手順、リリース手順、特定フォーマットのドキュメント生成。③で 3 ループが決まったなら「PR 前チェック」「フィードバック巡回」が候補の筆頭になる。1〜3 個が目安。汎用的すぎるもの（「コードを書く」）は作らない。
@@ -106,10 +107,14 @@ description: "プロジェクト立ち上げの対話型スキャフォールダ
 
 ### 生成後の検証（省略しない）
 
-- `find . -path ./node_modules -prune -o -path ./.git -prune -o -type f -print | sort` でツリーを表示し、合意したものと突き合わせる。
-- 全 SKILL.md / agents / rules の frontmatter が有効な YAML で、`name` がディレクトリ名と一致し、`description` が空でないことを確認する（`python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]).read().split('---')[1])" <file>`）。
-- 作った JSON（`.mcp.json` / `plugin.json` / `settings.json`）を `python3 -m json.tool` で構文チェックする。
-- CLAUDE.md の行数を確認する（200 行超なら分割を提案）。
+`python3 ${CLAUDE_SKILL_DIR}/scripts/validate.py` を実行する。次の 4 点を一度に確認し、問題があれば exit 1 で一覧を出す：
+
+- ツリーを表示する → 合意したものと目視で突き合わせる。
+- 全 SKILL.md / agents / rules の frontmatter が有効な YAML で、`name` がディレクトリ名（agents はファイル名）と一致し、`description` が空でない。
+- 作った JSON（`.mcp.json` / `plugin.json` / `settings.json`）が構文的に正しい。
+- CLAUDE.md が 200 行以内（超えていれば `.claude/rules/` への分割を提案）。
+
+スクリプトが使えない環境では、同じ 4 点を `find` / `python3 -c "import yaml,..."` / `python3 -m json.tool` / `wc -l` で手動確認する。
 - 最後に、**次にユーザーがやること**（環境変数の設定、`claude plugin validate`、初回コミット、未決事項の期限、CLAUDE.md の賞味期限付きの行の **見直し時期**）を 3〜5 行で示す。
 
 ## やってはいけないこと
